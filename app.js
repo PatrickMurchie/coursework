@@ -1,55 +1,37 @@
 const express = require('express');
-const session = require("express-session");
-const cors = require("cors");
-const mongoose = require('mongoose');
-const sessionStore = require("connect-mongodb-session");
-
-const userRoutes = require('./routes/userRoutes.js');
-const locationRoutes = require('./routes/locationRoutes.js');
-const videoRoutes = require('./routes/videoRoutes.js');
-const apiRoutes = require('./routes/apiRoutes.js');
-const { userAuth, userNotAuth } = require("./middleware/userAuth.js");
-
-const PORT = process.env.PORT || 8080;
-const PUBLIC_PATH = __dirname + "/client";
-const DB_URI = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qtjeo.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
-// const DB_URI = "mongodb://localhost/mapcast";
-
-// Create express app with HTTP server
+const path = require('path');
 const app = express();
+const MongoClient = require('mongodb').MongoClient;
 
-// Set the view engine to ejs for template rendering
-app.set("view engine", "ejs");
+const uri = 'mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority';
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
-// Cross-Origin Resource Sharing
-app.use(cors());
+// Serve static files from the 'build' directory
+app.use(express.static(path.join(__dirname, 'build')));
 
-// Make JSON sent in the request body available as req.body
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+// Serve the React app's initial HTML file
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
 
-// Serve static files
-app.use(express.static(PUBLIC_PATH));
+// Handle other routes using React Router
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
 
-// Create user sessions and store in database
-const MongoDBStore = sessionStore(session);
-app.use(session({
-	secret: process.env.SESSION_SECRET,
-	store: new MongoDBStore({
-		uri: DB_URI,
-		collection: "sessions",
-	}),
-	resave: true,
-	saveUninitialized: true,
-}));
+app.listen(3000, () => {
+  console.log('Server started on port 3000');
+});
 
-// Routes
-
-app.get('/', (req, res) => res.render("pages/index", { username: req.session.username }));
-
-
-// Connect to database
-mongoose.connect(DB_URI, { useNewUrlParser: true });
-
-// Start server listening for requests
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}...`));
+client.connect(err => {
+	if (err) {
+	  console.error(err);
+	} else {
+	  console.log('Connected to MongoDB');
+  
+	  // Start the server after connecting to the database
+	  app.listen(3000, () => {
+		console.log('Server started on port 3000');
+	  });
+	}
+  });
